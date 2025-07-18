@@ -1,90 +1,82 @@
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { NavUser } from "@/components/nav-user";
-import { UserManagementClient } from "@/components/users/user-management-client";
-import { getUsers } from "@/app/actions/user-management";
-import { getCurrentUser } from "@/lib/auth/server";
-import { getFullName, getInitials } from "@/lib/auth/client";
-
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/server";
+import { canManageUsers } from "@/lib/auth/permissions";
+import { UserManagementClient } from "@/components/users/user-management-client";
+import { AccessDenied } from "@/components/auth/access-denied";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function UserManagementPage() {
-  // Get user session from server-side auth
-  const userSession = await getCurrentUser();
-
-  // Redirect if not authenticated
-  if (!userSession) {
-    redirect("/login");
-  }
-
-  // Fetch initial users data
-  const initialData = await getUsers(
-    undefined, // searchQuery
-    undefined, // userLevelFilter
-    1, // currentPage
-    10 // pageSize
-  );
-
-  // Prepare user data for the navigation component
-  const userData = {
-    name: getFullName(
-      userSession.first_name,
-      userSession.last_name,
-      userSession.middle_name
-    ),
-    email: userSession.email,
-    avatar: userSession.avatar_url || "/avatars/default.jpg",
-    initials: getInitials(userSession.first_name, userSession.last_name),
-  };
-
+function UserManagementSkeleton() {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        {/* Header Section */}
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-16">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Users</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <Separator orientation="vertical" className="ml-auto h-4" />
-          <div className="flex items-center gap-2 px-4">
-            <NavUser user={userData} />
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 pt-0">
-          <UserManagementClient
-            initialUsers={initialData.users}
-            initialTotalCount={initialData.totalCount}
-          />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    </div>
   );
+}
+
+export default async function UsersPage() {
+  try {
+    // Get current user
+    const currentUser = await getCurrentUser();
+
+    // Redirect to login if not authenticated
+    if (!currentUser) {
+      redirect("/login");
+    }
+
+    // Check if user has permission to manage users
+    if (!canManageUsers(currentUser)) {
+      return (
+        <AccessDenied
+          title="Administrator Access Required"
+          message="You need administrator privileges to access the user management interface. Please contact your system administrator if you believe you should have access to this feature."
+          showBackButton={true}
+          showHomeButton={true}
+        />
+      );
+    }
+
+    // Check if user account is active
+    if (!currentUser.is_active) {
+      return (
+        <AccessDenied
+          title="Account Inactive"
+          message="Your account has been deactivated. Please contact your administrator to reactivate your account."
+          showBackButton={false}
+          showHomeButton={false}
+        />
+      );
+    }
+
+    return (
+      <div>
+        <div className="space-y-4">
+          <Suspense fallback={<UserManagementSkeleton />}>
+            <UserManagementClient currentUser={currentUser} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    console.error("Error in users page:", error);
+    return (
+      <AccessDenied
+        title="Error Loading Page"
+        message="An error occurred while loading the user management interface. Please try again or contact your administrator."
+        showBackButton={true}
+        showHomeButton={true}
+      />
+    );
+  }
 }

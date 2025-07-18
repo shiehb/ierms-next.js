@@ -13,7 +13,13 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import {
+  ArrowUpDown,
+  ChevronDown,
+  MoreHorizontal,
+  Filter,
+  X,
+} from "lucide-react";
 import {
   EditIcon,
   KeyRoundIcon,
@@ -51,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import type { User } from "@/app/actions/user-management";
 import type { UserLevel } from "@/lib/constants";
 import { SELECTABLE_USER_LEVELS } from "@/lib/constants";
@@ -66,6 +73,8 @@ interface UserTableProps {
   setSearchQuery: (query: string) => void;
   userLevelFilter: UserLevel | "all";
   setUserLevelFilter: (level: UserLevel | "all") => void;
+  statusFilter: string[];
+  setStatusFilter: (statuses: string[]) => void;
   sortBy: string;
   setSortBy: (sortBy: string) => void;
   sortOrder: "asc" | "desc";
@@ -76,6 +85,9 @@ interface UserTableProps {
   onEditUser: (user: User) => void;
   onResetPassword: (userId: number) => void;
   onToggleActiveStatus: (userId: number, currentStatus: boolean) => void;
+  columnVisibility: VisibilityState;
+  setColumnVisibility: (visibility: VisibilityState) => void;
+  fetchUsers: () => void;
 }
 
 // Define the table meta type with all required properties
@@ -110,7 +122,18 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "name",
-    header: "Name",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
+        >
+          Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const user = row.original;
       const initials = getInitials(user.first_name, user.last_name);
@@ -131,6 +154,15 @@ export const columns: ColumnDef<User>[] = [
         </div>
       );
     },
+    sortingFn: (rowA, rowB) => {
+      const nameA = `${rowA.original.first_name || ""} ${
+        rowA.original.last_name || ""
+      }`.trim();
+      const nameB = `${rowB.original.first_name || ""} ${
+        rowB.original.last_name || ""
+      }`.trim();
+      return nameA.localeCompare(nameB);
+    },
   },
   {
     accessorKey: "email",
@@ -139,6 +171,7 @@ export const columns: ColumnDef<User>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
         >
           Email
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -151,27 +184,55 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "user_level",
-    header: "Level",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
+        >
+          Level
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => (
       <div className="capitalize font-medium">{row.getValue("user_level")}</div>
     ),
   },
   {
     accessorKey: "is_active",
-    header: "Status",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
+        >
+          Status
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
     cell: ({ row }) => {
       const isActive = row.getValue("is_active");
       return (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        <Badge
+          variant={isActive ? "default" : "secondary"}
+          className={
             isActive
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-          }`}
+              ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300"
+              : "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-300"
+          }
         >
           {isActive ? "Active" : "Inactive"}
-        </span>
+        </Badge>
       );
+    },
+    sortingFn: (rowA, rowB) => {
+      const statusA = rowA.original.is_active ? 1 : 0;
+      const statusB = rowB.original.is_active ? 1 : 0;
+      return statusA - statusB;
     },
   },
   {
@@ -181,6 +242,7 @@ export const columns: ColumnDef<User>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold"
         >
           Joined
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -243,6 +305,11 @@ export const columns: ColumnDef<User>[] = [
   },
 ];
 
+const statusOptions = [
+  { value: "active", label: "Active", color: "bg-green-100 text-green-800" },
+  { value: "inactive", label: "Inactive", color: "bg-red-100 text-red-800" },
+];
+
 export function UserTable({
   users,
   totalCount,
@@ -253,6 +320,8 @@ export function UserTable({
   setSearchQuery,
   userLevelFilter,
   setUserLevelFilter,
+  statusFilter,
+  setStatusFilter,
   sortBy,
   setSortBy,
   sortOrder,
@@ -263,6 +332,9 @@ export function UserTable({
   onEditUser,
   onResetPassword,
   onToggleActiveStatus,
+  columnVisibility,
+  setColumnVisibility,
+  fetchUsers,
 }: UserTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: sortBy, desc: sortOrder === "desc" },
@@ -270,8 +342,6 @@ export function UserTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
@@ -314,77 +384,152 @@ export function UserTable({
     } satisfies TableMeta,
   });
 
-  const pageSizeOptions = [5, 10, 20, 50, 100];
+  const handleStatusFilterChange = (status: string, checked: boolean) => {
+    if (checked) {
+      setStatusFilter([...statusFilter, status]);
+    } else {
+      setStatusFilter(statusFilter.filter((s) => s !== status));
+    }
+  };
+
+  const clearStatusFilter = () => {
+    setStatusFilter([]);
+  };
+
+  const activeFiltersCount = React.useMemo(() => {
+    let count = 0;
+    if (searchQuery) count++;
+    if (userLevelFilter !== "all") count++;
+    if (statusFilter.length > 0) count++;
+    return count;
+  }, [searchQuery, userLevelFilter, statusFilter]);
 
   return (
-    <div className="w-full space-y-2 min-h-[calc(100vh-165px)]">
+    <div className="w-full space-y-4">
       {/* Header Controls */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search users by name or email..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search users by name or email..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Select
-            value={userLevelFilter}
-            onValueChange={(value: UserLevel | "all") =>
-              setUserLevelFilter(value)
-            }
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Filter by level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {SELECTABLE_USER_LEVELS.map((level) => (
-                <SelectItem key={level} value={level}>
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            {/* User Level Filter */}
+            <Select
+              value={userLevelFilter}
+              onValueChange={(value: UserLevel | "all") =>
+                setUserLevelFilter(value)
+              }
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Filter by level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {SELECTABLE_USER_LEVELS.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Columns <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  const columnName =
-                    column.id === "user_level"
-                      ? "User Level"
-                      : column.id === "is_active"
-                      ? "Status"
-                      : column.id === "created_at"
-                      ? "Joined"
-                      : column.id;
-
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
+            {/* Status Filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-transparent"
+                >
+                  <Filter className="h-4 w-4" />
+                  Status
+                  {statusFilter.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 h-5 w-5 rounded-full p-0 text-xs"
                     >
-                      {columnName}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                      {statusFilter.length}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  Filter by Status
+                  {statusFilter.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearStatusFilter}
+                      className="h-auto p-1 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {statusOptions.map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status.value}
+                    checked={statusFilter.includes(status.value)}
+                    onCheckedChange={(checked) =>
+                      handleStatusFilterChange(status.value, checked)
+                    }
+                    className="flex items-center gap-2"
+                  >
+                    <div className={`w-2 h-2 rounded-full ${status.color}`} />
+                    {status.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Column Visibility */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Columns <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    const columnName =
+                      column.id === "user_level"
+                        ? "User Level"
+                        : column.id === "is_active"
+                        ? "Status"
+                        : column.id === "created_at"
+                        ? "Joined"
+                        : column.id === "name"
+                        ? "Name"
+                        : column.id;
+
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {columnName}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -414,7 +559,7 @@ export function UserTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  <div className="flex items-center justify-center gap-2 min-h-[calc(100vh-345px)]">
+                  <div className="flex items-center justify-center gap-2 min-h-[calc(100vh-365px)]">
                     <Loader2Icon className="h-4 w-4 animate-spin" />
                     <p className="text-muted-foreground">Loading users...</p>
                   </div>
@@ -425,7 +570,7 @@ export function UserTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/50 "
+                  className="hover:bg-muted/50 min-h-[calc(100vh-355px)]"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -443,7 +588,7 @@ export function UserTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  <div className="flex flex-col items-center justify-center space-y-2 min-h-[calc(100vh-345px)]">
+                  <div className="flex flex-col items-center justify-center space-y-2 min-h-[calc(100vh-355px)]">
                     <p className="text-muted-foreground">No users found</p>
                     <p className="text-sm text-muted-foreground">
                       Try adjusting your search or filter criteria
@@ -454,70 +599,6 @@ export function UserTable({
             )}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * pageSize + 1} to{" "}
-            {Math.min(currentPage * pageSize, totalCount)} of {totalCount} users
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-          >
-            Previous
-          </Button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const page = i + 1;
-              return (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onPageChange(page)}
-                >
-                  {page}
-                </Button>
-              );
-            })}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-          >
-            Next
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
-          <Select
-            value={pageSize.toString()}
-            onValueChange={(value) => onPageSizeChange(Number(value))}
-          >
-            <SelectTrigger className="w-[70px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {pageSizeOptions.map((size) => (
-                <SelectItem key={size} value={size.toString()}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
     </div>
   );

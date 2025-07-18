@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { forcePasswordChange } from "@/app/actions/force-password-change"
+import { changePassword } from "@/app/actions/change-password"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 
 const initialState = {
@@ -13,8 +13,8 @@ const initialState = {
   success: false,
 }
 
-export function ForcePasswordChangeForm() {
-  const [state, formAction, isPending] = useActionState(forcePasswordChange, initialState)
+export function ChangePasswordForm() {
+  const [state, formAction, isPending] = useActionState(changePassword, initialState)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -37,7 +37,6 @@ export function ForcePasswordChangeForm() {
             placeholder="Enter current password"
             required
             disabled={isPending}
-            className="pr-10"
           />
           <Button
             type="button"
@@ -46,14 +45,12 @@ export function ForcePasswordChangeForm() {
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowCurrentPassword((prev) => !prev)}
             disabled={isPending}
-            tabIndex={-1}
           >
             {showCurrentPassword ? (
               <EyeOff className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Eye className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="sr-only">{showCurrentPassword ? "Hide password" : "Show password"}</span>
           </Button>
         </div>
       </div>
@@ -69,7 +66,6 @@ export function ForcePasswordChangeForm() {
             required
             disabled={isPending}
             minLength={8}
-            className="pr-10"
           />
           <Button
             type="button"
@@ -78,14 +74,12 @@ export function ForcePasswordChangeForm() {
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowNewPassword((prev) => !prev)}
             disabled={isPending}
-            tabIndex={-1}
           >
             {showNewPassword ? (
               <EyeOff className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Eye className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="sr-only">{showNewPassword ? "Hide password" : "Show password"}</span>
           </Button>
         </div>
       </div>
@@ -101,7 +95,6 @@ export function ForcePasswordChangeForm() {
             required
             disabled={isPending}
             minLength={8}
-            className="pr-10"
           />
           <Button
             type="button"
@@ -110,14 +103,12 @@ export function ForcePasswordChangeForm() {
             className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
             onClick={() => setShowConfirmPassword((prev) => !prev)}
             disabled={isPending}
-            tabIndex={-1}
           >
             {showConfirmPassword ? (
               <EyeOff className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Eye className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="sr-only">{showConfirmPassword ? "Hide password" : "Show password"}</span>
           </Button>
         </div>
       </div>
@@ -126,10 +117,10 @@ export function ForcePasswordChangeForm() {
         {isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Updating Password...
+            Changing Password...
           </>
         ) : (
-          "Update Password"
+          "Change Password"
         )}
       </Button>
     </form>

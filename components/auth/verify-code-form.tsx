@@ -1,28 +1,31 @@
-"use client"
+"use client";
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { useActionState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { verifyResetCode } from "@/app/actions/password-reset"
-import { Loader2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation";
+import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { verifyResetCode } from "@/app/actions/password-reset";
+import { Loader2 } from "lucide-react";
 
 const initialState = {
   message: "",
   success: false,
-}
+};
 
 export function VerifyCodeForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const email = searchParams?.get("email") || ""
-  const [state, formAction, isPending] = useActionState(verifyResetCode, initialState)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams?.get("email") || "";
+  const [state, formAction, isPending] = useActionState(
+    verifyResetCode,
+    initialState
+  );
 
   // Handle successful verification with redirect
   if (state.success && state.redirectTo) {
-    router.push(state.redirectTo)
+    router.push(state.redirectTo);
   }
 
   return (
@@ -37,7 +40,12 @@ export function VerifyCodeForm() {
 
       <div className="space-y-2">
         <Label htmlFor="email-display">Email Address</Label>
-        <Input id="email-display" type="email" value={email} disabled className="bg-gray-50" />
+        <Input
+          id="email-display"
+          type="email"
+          value={email}
+          className="bg-gray-50"
+        />
       </div>
 
       <div className="space-y-2">
@@ -64,5 +72,5 @@ export function VerifyCodeForm() {
         )}
       </Button>
     </form>
-  )
+  );
 }

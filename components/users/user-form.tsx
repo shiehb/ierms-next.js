@@ -8,9 +8,13 @@ import {
   updateUser,
   type User,
 } from "@/app/actions/user-management";
-import { SELECTABLE_USER_LEVELS } from "@/lib/constants";
+import {
+  SELECTABLE_USER_LEVELS,
+  USER_LEVEL_DISPLAY_NAMES,
+  type UserLevel,
+} from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,17 +39,94 @@ interface UserFormProps {
   initialData?: User; // For editing existing users
   onSuccess: () => void;
   onCancel: () => void;
+  accessibleUserLevels: UserLevel[]; // User levels that current user can assign
 }
 
-export function UserForm({ initialData, onSuccess, onCancel }: UserFormProps) {
-  const isEditing = !!initialData;
-  const action = isEditing ? updateUser : createUser;
+interface FormState {
+  message: string;
+  success: boolean;
+  errors?: {
+    firstName?: string[];
+    lastName?: string[];
+    middleName?: string[];
+    email?: string[];
+    userLevel?: string[];
+  };
+}
 
-  const initialState = {
+export function UserForm({
+  initialData,
+  onSuccess,
+  onCancel,
+  accessibleUserLevels,
+}: UserFormProps) {
+  const isEditing = !!initialData;
+
+  const initialState: FormState = {
     message: "",
     success: false,
     errors: {},
   };
+
+  // Create wrapper functions that match the expected signature
+  const createUserWrapper = async (
+    prevState: FormState,
+    formData: FormData
+  ): Promise<FormState> => {
+    const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const middleName = formData.get("middleName") as string;
+    const email = formData.get("email") as string;
+    const userLevel = formData.get("userLevel") as UserLevel;
+
+    const result = await createUser({
+      first_name: firstName,
+      last_name: lastName,
+      middle_name: middleName,
+      email,
+      user_level: userLevel,
+    });
+
+    return {
+      message: result.message,
+      success: result.success,
+      errors: result.success ? undefined : { email: [result.message] },
+    };
+  };
+
+  const updateUserWrapper = async (
+    prevState: FormState,
+    formData: FormData
+  ): Promise<FormState> => {
+    if (!initialData) {
+      return {
+        message: "No user data provided for update",
+        success: false,
+      };
+    }
+
+    const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const middleName = formData.get("middleName") as string;
+    const email = formData.get("email") as string;
+    const userLevel = formData.get("userLevel") as UserLevel;
+
+    const result = await updateUser(initialData.id, {
+      first_name: firstName,
+      last_name: lastName,
+      middle_name: middleName,
+      email,
+      user_level: userLevel,
+    });
+
+    return {
+      message: result.message,
+      success: result.success,
+      errors: result.success ? undefined : { email: [result.message] },
+    };
+  };
+
+  const action = isEditing ? updateUserWrapper : createUserWrapper;
   const [state, formAction] = useActionState(action, initialState);
 
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -122,7 +203,7 @@ export function UserForm({ initialData, onSuccess, onCancel }: UserFormProps) {
     }
 
     // User level validation
-    if (!SELECTABLE_USER_LEVELS.includes(userLevel as any)) {
+    if (!accessibleUserLevels.includes(userLevel as UserLevel)) {
       errors.userLevel = ["Invalid user level selected."];
     }
 
@@ -152,6 +233,11 @@ export function UserForm({ initialData, onSuccess, onCancel }: UserFormProps) {
     setShowConfirmation(false);
     setPendingFormData(null);
   };
+
+  // Filter user levels based on what current user can assign
+  const availableUserLevels = SELECTABLE_USER_LEVELS.filter((level) =>
+    accessibleUserLevels.includes(level)
+  );
 
   return (
     <>
@@ -262,18 +348,16 @@ export function UserForm({ initialData, onSuccess, onCancel }: UserFormProps) {
               </Label>
               <Select
                 name="userLevel"
-                defaultValue={
-                  initialData?.user_level || SELECTABLE_USER_LEVELS[0]
-                }
+                defaultValue={initialData?.user_level || availableUserLevels[0]}
                 required
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a user level" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SELECTABLE_USER_LEVELS.map((level) => (
+                  {availableUserLevels.map((level) => (
                     <SelectItem key={level} value={level}>
-                      {level.charAt(0).toUpperCase() + level.slice(1)}
+                      {USER_LEVEL_DISPLAY_NAMES[level]}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -42,11 +42,6 @@ export default function LoginPage() {
               </div>
             )}
             <LoginForm />
-            <div className="mt-4 text-center">
-              <Button variant="link" className="text-sm" asChild>
-                <Link href="/forgot-password">Forgot Password?</Link>
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
