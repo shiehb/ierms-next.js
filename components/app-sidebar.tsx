@@ -22,17 +22,17 @@ const data = {
     },
     {
       title: "Establishments",
-      url: "/establishments",
+      url: "/establishment",
       icon: Building,
       isActive: false,
       items: [
         {
-          title: "All Establishments",
-          url: "/establishments",
+          title: "Establishment List",
+          url: "/establishment",
         },
         {
           title: "Add Establishment",
-          url: "/establishments/add",
+          url: "/establishment/add",
         },
       ],
     },
