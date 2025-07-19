@@ -22,6 +22,7 @@ import { UserForm } from "./user-form";
 import type { User } from "@/app/actions/user-management";
 import { USER_LEVEL_DISPLAY_NAMES } from "@/lib/constants";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   getUsers,
   resetUserPassword,
@@ -38,6 +39,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UserManagementClientProps {
   currentUser: User;
@@ -78,7 +89,7 @@ export function UserManagementClient({
   currentUser,
 }: UserManagementClientProps) {
   // State management
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +97,11 @@ export function UserManagementClient({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [resetUserId, setResetUserId] = useState<number | null>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [toggleUserId, setToggleUserId] = useState<number | null>(null);
+  const [toggleCurrentStatus, setToggleCurrentStatus] = useState<boolean | null>(null);
+  const [showToggleDialog, setShowToggleDialog] = useState(false);
 
   // Filter and sorting state with persistence
   const [searchQuery, setSearchQuery] = useState(() =>
@@ -109,6 +125,8 @@ export function UserManagementClient({
   const [columnVisibility, setColumnVisibility] = useState(() =>
     getStoredValue(STORAGE_KEYS.COLUMN_VISIBILITY, {})
   );
+
+  const router = useRouter();
 
   // Persist state changes to localStorage
   useEffect(() => {
@@ -227,8 +245,7 @@ export function UserManagementClient({
 
   // Handle user actions
   const handleCreateUser = () => {
-    setSelectedUser(null);
-    setIsCreateDialogOpen(true);
+    router.push("/users/add");
   };
 
   const handleEditUser = (user: any) => {
@@ -317,10 +334,70 @@ export function UserManagementClient({
     setSelectedUser(null);
   };
 
+  // Filter out admin users from the table for security
+  const filteredUsers = users.filter(
+    (user) => user.user_level !== "admin" && user.user_level !== "Admin"
+  );
+
   return (
     <div>
+      {/* Password Reset Confirmation Dialog */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Password Reset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reset this user's password? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowResetDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (resetUserId !== null) {
+                  await handleResetPassword(resetUserId);
+                  setShowResetDialog(false);
+                  setResetUserId(null);
+                }
+              }}
+            >
+              Confirm Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Toggle Active/Inactive Confirmation Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {toggleCurrentStatus === true ? "deactivate" : "activate"} this user?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowToggleDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (toggleUserId !== null && toggleCurrentStatus !== null) {
+                  await handleToggleActiveStatus(toggleUserId, toggleCurrentStatus);
+                  setShowToggleDialog(false);
+                  setToggleUserId(null);
+                  setToggleCurrentStatus(null);
+                }
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Header */}
-      <Card className="min-h-[calc(100vh-80px)]">
+      <Card className="min-h-[calc(100vh-70px)] flex flex-col rounded-none border-none">
         <CardHeader className="p-4 pb-2">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -388,9 +465,9 @@ export function UserManagementClient({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-0">
+        <CardContent className="p-4 pt-0 flex-1 min-h-0">
           <UserTable
-            users={users}
+            users={filteredUsers}
             totalCount={totalCount}
             totalPages={totalPages}
             currentPage={currentPage}
@@ -409,14 +486,21 @@ export function UserManagementClient({
             onPageSizeChange={handlePageSizeChange}
             isFetchingUsers={isFetchingUsers}
             onEditUser={handleEditUser}
-            onResetPassword={handleResetPassword}
-            onToggleActiveStatus={handleToggleActiveStatus}
+            onResetPassword={(userId) => {
+              setResetUserId(userId);
+              setShowResetDialog(true);
+            }}
+            onToggleActiveStatus={(userId, currentStatus) => {
+              setToggleUserId(userId);
+              setToggleCurrentStatus(currentStatus);
+              setShowToggleDialog(true);
+            }}
             columnVisibility={columnVisibility}
             setColumnVisibility={setColumnVisibility}
             fetchUsers={fetchUsers}
           />
         </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pb-2">
+        <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pb-2 mt-auto">
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">
               Showing {(currentPage - 1) * pageSize + 1} to{" "}
@@ -492,24 +576,6 @@ export function UserManagementClient({
           </div>
         </CardFooter>
       </Card>
-
-      {/* Create User Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>
-              Add a new user to the system. They will receive an email with
-              their login credentials.
-            </DialogDescription>
-          </DialogHeader>
-          <UserForm
-            onSuccess={handleFormSuccess}
-            onCancel={handleFormCancel}
-            accessibleUserLevels={accessibleUserLevels}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

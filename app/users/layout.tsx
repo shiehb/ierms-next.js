@@ -18,7 +18,7 @@ import { NavUser } from "@/components/nav-user";
 import { getUserSession, getFullName, getInitials } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-export default async function DashboardLayout({
+export default async function UsersLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -30,36 +30,37 @@ export default async function DashboardLayout({
   }
 
   const userData = {
-    name: getFullName(
-      userSession.first_name,
-      userSession.last_name,
-      userSession.middle_name
-    ),
+    id: userSession.id,
     email: userSession.email,
-    avatar: "/avatars/default.jpg", // You can implement avatar upload later
-    initials: getInitials(userSession.first_name, userSession.last_name),
+    first_name: userSession.first_name,
+    last_name: userSession.last_name,
+    middle_name: userSession.middle_name,
+    user_level: userSession.user_level,
+    is_active: userSession.is_active,
+    force_password_change: userSession.force_password_change,
+    avatar_url: userSession.avatar_url || null,
+    created_at: userSession.created_at,
+    updated_at: userSession.updated_at,
   };
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-16">
+        <header className="flex border-b h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-16">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Separator orientation="vertical" className=" h-4" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashbloard">
+                  <BreadcrumbLink href="/dashboard">
                     <BreadcrumbPage>Dashboard</BreadcrumbPage>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/users">
-                    <BreadcrumbPage>Users</BreadcrumbPage>
-                  </BreadcrumbLink>
+                  <BreadcrumbPage>Users</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -69,7 +70,7 @@ export default async function DashboardLayout({
             <NavUser user={userData} />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

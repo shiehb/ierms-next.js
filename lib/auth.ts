@@ -1,5 +1,6 @@
 import { createServiceClient } from "./supabase/server"
 import { cookies } from "next/headers"
+import type { UserLevel } from "@/lib/constants";
 
 export interface UserSession {
   id: number
@@ -7,7 +8,7 @@ export interface UserSession {
   first_name: string | null
   last_name: string | null
   middle_name: string | null
-  user_level: string
+  user_level: UserLevel
   is_active: boolean
   force_password_change: boolean
   avatar_url: string | null

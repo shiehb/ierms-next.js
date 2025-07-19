@@ -13,7 +13,7 @@ export interface User {
   first_name: string | null;
   last_name: string | null;
   middle_name: string | null;
-  user_level: string;
+  user_level: UserLevel;
   is_active: boolean;
   force_password_change: boolean;
   avatar_url: string | null;
@@ -179,7 +179,7 @@ async function requireAdminAccess(): Promise<boolean> {
     throw new Error("Authentication required");
   }
 
-  if (!canManageUsers(currentUser)) {
+  if (!canManageUsers({ ...currentUser, user_level: currentUser.user_level as import("@/lib/constants").UserLevel })) {
     throw new Error("Administrator access required");
   }
 
@@ -191,7 +191,7 @@ async function requireAdminAccess(): Promise<boolean> {
  */
 export async function getUsers(
   searchQuery?: string,
-  userLevelFilter?: UserLevel,
+  userLevelFilter?: UserLevel | "all",
   currentPage = 1,
   pageSize = 10,
   sortBy = "created_at",

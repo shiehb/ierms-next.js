@@ -51,6 +51,7 @@ interface FormState {
     middleName?: string[];
     email?: string[];
     userLevel?: string[];
+    // status?: string[]; // Remove status errors
   };
 }
 
@@ -78,6 +79,8 @@ export function UserForm({
     const middleName = formData.get("middleName") as string;
     const email = formData.get("email") as string;
     const userLevel = formData.get("userLevel") as UserLevel;
+    // const status = formData.get("status") as string;
+    // const is_active = status === "active";
 
     const result = await createUser({
       first_name: firstName,
@@ -85,6 +88,7 @@ export function UserForm({
       middle_name: middleName,
       email,
       user_level: userLevel,
+      // is_active,
     });
 
     return {
@@ -110,6 +114,8 @@ export function UserForm({
     const middleName = formData.get("middleName") as string;
     const email = formData.get("email") as string;
     const userLevel = formData.get("userLevel") as UserLevel;
+    // const status = formData.get("status") as string;
+    // const is_active = status === "active";
 
     const result = await updateUser(initialData.id, {
       first_name: firstName,
@@ -117,6 +123,7 @@ export function UserForm({
       middle_name: middleName,
       email,
       user_level: userLevel,
+      // is_active,
     });
 
     return {
@@ -164,6 +171,7 @@ export function UserForm({
     const lastName = formData.get("lastName") as string;
     const middleName = formData.get("middleName") as string;
     const userLevel = formData.get("userLevel") as string;
+    // const status = formData.get("status") as string;
 
     // Perform client-side validation
     const errors: Record<string, string[]> = {};
@@ -207,6 +215,11 @@ export function UserForm({
       errors.userLevel = ["Invalid user level selected."];
     }
 
+    // Remove status validation
+    // if (!status || (status !== "active" && status !== "inactive")) {
+    //   errors.status = ["Status is required."];
+    // }
+
     if (Object.keys(errors).length > 0) {
       // If validation fails, update state to show errors immediately
       formAction(formData);
@@ -221,6 +234,7 @@ export function UserForm({
     formattedFormData.append("middleName", formatName(middleName.trim()));
     formattedFormData.append("email", email.trim().toLowerCase());
     formattedFormData.append("userLevel", userLevel);
+    // formattedFormData.append("status", status);
 
     setPendingFormData(formattedFormData);
     setShowConfirmation(true);
@@ -332,6 +346,8 @@ export function UserForm({
                 aria-describedby={
                   state.errors?.email ? "email-error" : undefined
                 }
+                // Make email read-only when editing
+                disabled={isEditing}
               />
               {state.errors?.email && (
                 <p
@@ -371,6 +387,7 @@ export function UserForm({
                 </p>
               )}
             </div>
+            {/* Remove status field UI */}
           </div>
           <div className="grid grid-cols-3 gap-4 h-16 items-center">
             {state.message && (

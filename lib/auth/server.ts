@@ -18,7 +18,7 @@ export interface UserSession {
 
 export async function getCurrentUser(): Promise<UserSession | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("auth_session");
 
     if (!sessionCookie?.value) {
