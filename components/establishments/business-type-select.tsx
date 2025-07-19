@@ -1,21 +1,29 @@
 import React from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface BusinessTypeSelectProps {
   name: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
 }
 
-export default function BusinessTypeSelect({ name, value, onChange }: BusinessTypeSelectProps) {
+export default function BusinessTypeSelect({
+  name,
+  value,
+  onChange,
+}: BusinessTypeSelectProps) {
   return (
-    <select
-      name={name}
-      value={value}
-      onChange={onChange}
-      className="w-full border rounded p-2"
-    >
-      <option value="">Select business type</option>
-      {/* TODO: Populate with business types */}
-    </select>
+    <Select name={name} value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select business type" />
+      </SelectTrigger>
+      <SelectContent>{/* TODO: Populate with business types */}</SelectContent>
+    </Select>
   );
-} 
+}
